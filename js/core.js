@@ -159,6 +159,21 @@
     whoosh() { this.noise(0.35, { ftype: 'lowpass', freq: 900, q: 0.7, vol: 0.18 }); },
     thud() { this.tone(170, 0.22, { vol: 0.35, slide: 55 }); this.noise(0.07, { freq: 500, q: 1, vol: 0.15 }); },
     pop() { this.tone(420, 0.18, { type: 'triangle', vol: 0.25, slide: 1400 }); this.noise(0.12, { freq: 1800, q: 0.8, vol: 0.22 }); },
+    /** Murmullo de tribuna: ruido filtrado en loop con subida y bajada. */
+    cheer(dur = 2, vol = 0.12) {
+      const ac = this.ctx(); if (!ac) return;
+      const t = ac.currentTime;
+      const src = ac.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 0.6;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.6, dur / 3));
+      g.gain.setValueAtTime(vol, t + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f); f.connect(g); g.connect(this.master);
+      src.start(t); src.stop(t + dur + 0.05);
+    },
+    bang() { this.noise(0.25, { ftype: 'lowpass', freq: 2500, q: 0.5, vol: 0.5 }); this.tone(90, 0.2, { vol: 0.3, slide: 40 }); },
     fanfare() {
       [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.tone(f, 0.22, { type: 'triangle', vol: 0.14, when: 0.05 + i * 0.09 }));
       this.tone(1046.5, 0.9, { type: 'triangle', vol: 0.12, when: 0.42 });

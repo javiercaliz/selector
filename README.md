@@ -17,10 +17,12 @@ css/styles.css        layout, panel de participantes
 css/game-shared.css   botón principal y pantalla del ganador (compartidos)
 css/gachapon.css      la máquina
 css/plinko.css        el tablero
+css/carrera.css       la pista
 js/core.js            Store (estado), Sound, Confetti, registro de juegos
 js/app.js             navegación y panel
 js/games/gachapon.js  minijuego Gachapón
 js/games/plinko.js    minijuego Plinko
+js/games/carrera.js   minijuego Carrera de vallas
 ```
 
 **Justicia:** en todos los juegos el ganador se sortea primero con `crypto.getRandomValues`
