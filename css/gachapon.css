@@ -4,7 +4,7 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 18px;
   /* unidad de escala: la máquina se diseña en 400×752 "u" y se ajusta al escenario */
-  --u: min(calc((100cqh - 175px) / 760), calc((100cqw - 40px) / 460), 1.3px);
+  --u: max(.4px, min(calc((100cqh - 175px) / 760), calc((100cqw - 40px) / 460), 1.3px));
   --m-grad: linear-gradient(90deg, #a30f35 0%, #e8264f 16%, #ff5b7a 36%, #ff3d5f 52%, #d81c47 78%, #870c2c 100%);
   --m-grad-dark: linear-gradient(90deg, #7c0a28 0%, #c4183f 22%, #e83a5d 42%, #c3173d 70%, #66071f 100%);
 }

@@ -113,27 +113,28 @@
     return { slot, path, hits, steps: s };
   }
 
-  /** Busca una caída natural que termine en `target`, saliendo cerca de donde apuntó el jugador. */
-  function findRun(L, aimX, target) {
+  /** Busca una caída natural que termine en `target`, saliendo desde un punto al azar de la parte de arriba. */
+  function findRun(L, target) {
     const tx = WALL + (target + 0.5) * L.slotW;
     const lo = WALL + L.r + 1, hi = W - WALL - L.r - 1;
+    const pack = (x0, res) => Object.assign(res, { x0 });
     for (const k of [0, 0, 0, 0, 30, 60, 90, 130, 180, 250, 350, 500]) {
       for (let a = 0; a < 150; a++) {
-        const x0 = clamp(aimX + (Math.random() - 0.5) * 14, lo, hi);
+        const x0 = lo + Math.random() * (hi - lo);
         const vx0 = (Math.random() - 0.5) * 80;
         const seed = (Math.random() * 2147483647) | 0;
         if (simulate(L, x0, vx0, seed, false, tx, k).slot === target) {
-          return simulate(L, x0, vx0, seed, true, tx, k);
+          return pack(x0, simulate(L, x0, vx0, seed, true, tx, k));
         }
       }
     }
-    return simulate(L, clamp(aimX, lo, hi), 0, 1, true, tx, 900);
+    return pack(tx, simulate(L, tx, 0, 1, true, tx, 900));
   }
 
   /* ---------- Juego ---------- */
   const TPL = `
   <div class="plinko">
-    <div class="pk-board" title="Mové el mouse para apuntar · clic para soltar">
+    <div class="pk-board" title="Clic para soltar la bola">
       <canvas></canvas>
       <div class="pk-msg" hidden></div>
     </div>
@@ -180,7 +181,7 @@
       this.order = [];       // ids de personas, en el orden de los casilleros
       this.people = new Map();
       this.L = null;
-      this.aimX = W / 2; this.manualUntil = 0; this.time = 0;
+      this.aimX = W / 2; this.time = 0; this.shuf = null;
       this.run = null; this.play = 0; this.hitIdx = 0;
       this.glow = new Map(); this.trail = [];
       this.winner = null; this.winSlot = -1;
@@ -236,14 +237,8 @@
     bind() {
       const { board, main, msg } = this.el;
       main.addEventListener('click', () => this.drop());
-      board.addEventListener('pointermove', e => {
-        if (this.state !== 'aim') return;
-        this.aimX = this.toLogical(e).x;
-        this.manualUntil = performance.now() + 2500;
-      });
       board.addEventListener('click', e => {
-        if (e.target.closest('.pk-msg')) return;
-        if (this.state === 'aim') { this.aimX = this.toLogical(e).x; this.drop(); }
+        if (!e.target.closest('.pk-msg')) this.drop();
       });
       msg.addEventListener('click', e => {
         const b = e.target.closest('[data-act]'); if (!b) return;
@@ -256,23 +251,12 @@
         else this.closeReveal(b.dataset.act === 'again');
       });
       this.onKey = e => {
-        if (e.repeat && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-        if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+        if (e.repeat || e.target.closest('input, textarea, select, [contenteditable]')) return;
         const revealOpen = this.reveal.classList.contains('show');
         if (revealOpen) { if (e.key === 'Escape') this.closeReveal(); return; }
-        if (this.state === 'aim' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-          e.preventDefault();
-          this.aimX = clamp(this.aimX + (e.key === 'ArrowLeft' ? -18 : 18), 20, W - 20);
-          this.manualUntil = performance.now() + 2500;
-        }
         if ((e.code === 'Space' || e.key === 'Enter') && e.target === document.body) { e.preventDefault(); this.drop(); }
       };
       document.addEventListener('keydown', this.onKey);
-    }
-
-    toLogical(e) {
-      const r = this.el.canvas.getBoundingClientRect();
-      return { x: clamp((e.clientX - r.left) / r.width * W, 20, W - 20), y: (e.clientY - r.top) / r.height * H };
     }
 
     /* ---------- Flujo ---------- */
@@ -282,9 +266,17 @@
       if (!pool.length) return;
       this.winner = pool[util.rand(pool.length)];
       const target = this.order.indexOf(this.winner.id);
-      this.run = findRun(this.L, this.aimX, target);
+      this.run = findRun(this.L, target);
       if (this.run.slot !== target) this.winner = this.people.get(this.order[this.run.slot]); // salvaguarda
       this.winSlot = this.run.slot;
+      // El dispensador corre de un lado a otro y frena en el punto de salida (al azar).
+      this.shuf = { t: 0, dur: 1.6, next: 0, target: this.aimX };
+      this.state = 'shuffling';
+      this.updateUI();
+    }
+
+    startFall() {
+      this.aimX = this.run.x0;
       this.play = 0; this.hitIdx = 0; this.trail = [];
       this.state = 'falling';
       Sound.tone(880, 0.12, { type: 'triangle', vol: 0.12, slide: 440 });
@@ -343,7 +335,8 @@
       }
       msg.hidden = true;
       const cfg = {
-        aim: ['🟡  Soltar la bola', 'Apuntá con el mouse (o ← →) y soltá · clic en el tablero también sirve'],
+        aim: ['🟡  Soltar la bola', 'La bola sale desde un lugar al azar · tocá el botón o el tablero'],
+        shuffling: ['🎲  Eligiendo lugar…', '¿Desde dónde va a caer?'],
         falling: ['¡Rebotando!', '¿Dónde va a caer…?'],
         landed: ['¡Cayó!', ''],
         reveal: ['¡Cayó!', ''],
@@ -446,13 +439,25 @@
     }
 
     frame(t) {
-      const dt = Math.min(0.05, (t - this.last) / 1000);
+      const dt = Math.max(0, Math.min(0.05, (t - this.last) / 1000));
       this.last = t; this.time += dt;
-      if (!this.k || !this.L) return;
+      if (!this.L) return;
 
-      if (this.state === 'aim' && t > this.manualUntil) {
-        const target = W / 2 + Math.sin(this.time * 1.1) * (W / 2 - 70);
+      if (this.state === 'aim') {
+        // paseo tranquilo mientras espera
+        const target = W / 2 + Math.sin(this.time * 0.9) * (W / 2 - 90);
         this.aimX += (target - this.aimX) * Math.min(1, dt * 3);
+      } else if (this.state === 'shuffling') {
+        const s = this.shuf, settle = s.t >= s.dur - 0.5;
+        s.t += dt;
+        if (settle) s.target = this.run.x0;
+        else if (s.t >= s.next) {
+          s.target = 40 + Math.random() * (W - 80);
+          s.next = s.t + 0.1 + Math.random() * 0.12;
+          Sound.tick();
+        }
+        this.aimX += (s.target - this.aimX) * Math.min(1, dt * (settle ? 8 : 16));
+        if (s.t >= s.dur) this.startFall();
       }
 
       if (this.state === 'falling' && this.run) {
@@ -501,7 +506,7 @@
       c.setTransform(this.k * this.dpr, 0, 0, this.k * this.dpr, 0, 0);
 
       // luces de marquesina
-      const nb = 22, fast = this.state === 'falling' ? 9 : 2.5;
+      const nb = 22, fast = this.state === 'aim' ? 2.5 : 9;
       for (let i = 0; i < nb; i++) {
         const x = 18 + i * (W - 36) / (nb - 1);
         const on = (Math.floor(this.time * fast) + i) % 3 === 0;
@@ -546,7 +551,7 @@
       }
 
       // dispensador + bola
-      const dx = this.state === 'aim' ? this.aimX : (this.run ? this.run.path[0] : this.aimX);
+      const dx = this.aimX;
       c.fillStyle = '#e8264f';
       roundRect(c, dx - 20, 26, 40, 18, 7); c.fill();
       c.fillStyle = 'rgba(255,255,255,.3)';
@@ -554,11 +559,7 @@
       c.beginPath(); c.moveTo(dx - 9, 44); c.lineTo(dx + 9, 44); c.lineTo(dx + 5, 50); c.lineTo(dx - 5, 50); c.closePath();
       c.fillStyle = '#a30f35'; c.fill();
 
-      if (this.state === 'aim') {
-        c.setLineDash([4, 8]);
-        c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 2;
-        c.beginPath(); c.moveTo(dx, DROP_Y + L.r + 4); c.lineTo(dx, PEG_TOP - 16); c.stroke();
-        c.setLineDash([]);
+      if (this.state === 'aim' || this.state === 'shuffling') {
         this.drawBall(c, dx, DROP_Y + Math.sin(this.time * 5) * 1.5, L.r);
       } else if (this.run) {
         const [bx, by] = this.ballAt(this.play);
