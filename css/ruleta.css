@@ -1,0 +1,38 @@
+/* ======================= Ruleta ======================= */
+.ruleta {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px;
+  --ws: max(240px, min(calc(100cqw - 40px), calc(100cqh - 150px), 600px));
+}
+.rl-wheel {
+  position: relative; flex: none;
+  width: var(--ws); aspect-ratio: 1;
+  user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.rl-wheel.can-spin { cursor: pointer; }
+.rl-wheel canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.rl-msg {
+  position: absolute; inset: 9%; z-index: 2; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 20px; text-align: center;
+  font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: clamp(18px, calc(var(--ws) * .05), 26px);
+  background: rgba(13, 6, 36, .7);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  cursor: default;
+}
+.rl-msg[hidden] { display: none; }
+.rl-msg .pill-btn { font-size: 15px; padding: 11px 22px; }
+
+/* --- resultado --- */
+.hint.rl-hint-twist { color: var(--gold); font-size: 17px; }
+.hint.rl-hint-match { color: #10d9a0; font-size: 17px; }
+.rl-note {
+  margin-top: 8px;
+  font-weight: 900; font-size: clamp(15px, 2.4vw, 20px);
+  color: #10d9a0;
+}
+.reveal.rl-twist .rl-note { color: var(--gold); }
+.reveal .rl-note + .winner { margin-top: 0; }

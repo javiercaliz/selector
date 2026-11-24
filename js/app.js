@@ -5,7 +5,6 @@
   const $ = s => document.querySelector(s);
 
   const SOON = [
-    { emoji: '🎡', title: 'Ruleta' },
     { emoji: '🎰', title: 'Tragamonedas' },
     { emoji: '🦾', title: 'Garra' },
   ];

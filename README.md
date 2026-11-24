@@ -18,16 +18,20 @@ css/game-shared.css   botón principal y pantalla del ganador (compartidos)
 css/gachapon.css      la máquina
 css/plinko.css        el tablero
 css/carrera.css       la pista
+css/ruleta.css        la ruleta
 js/core.js            Store (estado), Sound, Confetti, registro de juegos
 js/app.js             navegación y panel
 js/games/gachapon.js  minijuego Gachapón
 js/games/plinko.js    minijuego Plinko
 js/games/carrera.js   minijuego Carrera de vallas
+js/games/ruleta.js    minijuego Ruleta (la porción se abre y revela el nombre real de atrás)
 ```
 
 **Justicia:** en todos los juegos el ganador se sortea primero con `crypto.getRandomValues`
 (uniforme). La animación solo pone el suspenso. En Plinko se buscan, con la misma física, las
 condiciones iniciales que llevan la bola a ese casillero y se reproduce esa caída exacta.
+En la Ruleta, la porción donde frena es escenografía (1 de cada 3 veces coincide con el ganador);
+el nombre que aparece detrás de la puertita es el sorteado.
 
 ## Agregar un minijuego
 
